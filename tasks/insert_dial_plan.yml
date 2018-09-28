@@ -1,0 +1,9 @@
+- name: copio il dump dump_dialplan.sql
+  copy:
+    src: files/dump_dialplan.sql
+    dest: /tmp
+- name: Importazione database
+  mysql_db:
+    name: opensips
+    state: import
+    target: /tmp/dump_dialplan.sql

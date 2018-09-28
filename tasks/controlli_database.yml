@@ -1,4 +1,5 @@
 - name: controllo che il processo mysqld sia in esecuzione
+  shell: ps -C mysqld
   changed_when: false
   failed_when: false
   check_mode: false
@@ -7,7 +8,45 @@
 # Se non è in esecuzione il processo mysqld, chi mi ha fornito le coordinate
 # del DB non conosce la struttura di questo cliente
 - block:
-  - name: Controllo che il DB abbia veramente mysqld in esecuzione
+  - name: mysqld non è in esecuzione
     failed: msg="Non c'è in esecuzione nessuna istanza di mysqld"
   - meta: end_play
   when: mysqlup_6551.rc != 0
+
+#Il file di configurazione che andiamo ad installare ha già l'occorente per la gestione delle
+#location. E' fondamentale che esista la controparte lato mysql per la gestione delle location
+- name: Controllo l'esistenza della tabella location
+  shell: mysql -N -B -e "select * from opensips.version" | grep location
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  register: location1_6551
+# qui controllo l'effettiva presenza della tabella
+- shell: mysql -N -B -e "use opensips; show tables" | grep location
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  register: location2_6551
+
+- block:
+  - name: Fallisco se non è presente la tabella location
+     failed: msg="Non è presente la tabella opensips.location. Non posso procedere con l'aggiornamento"
+  - meta: end_play
+  when:
+    location1_6551.rc != 0 or location2_6551.rc != 0
+
+# posso procedere a quello che serve per l'inserimento della parte dialplan
+
+# Check della presenza riga dialplan su tabella opensips.version
+
+- shell: mysql -N -B -e "select * from opensips.version where table_name='dialplan'; "
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  register: dialplan_presente_6551
+
+# Se la riga non è presente vuol dire che dobbiamo procedere all'inserimento di tutto l'occorrente
+# per il dialplan
+
+- include: insert_dial_plan.yml
+  when: dialplan_presente_6551.stdout == ""

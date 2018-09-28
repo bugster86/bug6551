@@ -23,3 +23,6 @@
   failed_when: false
   check_mode: false
   register: opensips_up_6551
+
+- include: modifica_opensips.yml
+  when: opensips_up_6551.rc == 0
