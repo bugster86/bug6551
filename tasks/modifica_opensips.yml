@@ -12,5 +12,5 @@
     group: opensips
     mode: 0644
     dest: /etc/opensips/opensips.cfg
-    src: templates/opensips.cfg.j2
+    src: templates/opensips.{{ansible_distribution}}.cfg.j2
   handler: restart_opensips_6551
