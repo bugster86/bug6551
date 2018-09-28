@@ -8,4 +8,9 @@
   delegate_to: localhost
   changed_when: false
 
-
+#Il parametro DB è obbligatorio ma meglio ribadirlo
+- block:
+  - name: Fallisco l'applicazione del bugfix se non esiste il parametro DB
+    failed: msg="Non posso procedere perchè non è presente il parametro DB"
+  - meta: end_play
+  when: DB not defined
