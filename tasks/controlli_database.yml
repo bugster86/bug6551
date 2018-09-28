@@ -1,0 +1,13 @@
+- name: controllo che il processo mysqld sia in esecuzione
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  register: mysqlup_6551
+
+# Se non è in esecuzione il processo mysqld, chi mi ha fornito le coordinate
+# del DB non conosce la struttura di questo cliente
+- block:
+  - name: Controllo che il DB abbia veramente mysqld in esecuzione
+    failed: msg="Non c'è in esecuzione nessuna istanza di mysqld"
+  - meta: end_play
+  when: mysqlup_6551.rc != 0
