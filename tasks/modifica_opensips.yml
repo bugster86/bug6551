@@ -1,0 +1,16 @@
+- name: Sei sicuro di voler procedere?
+  pause: prompt='ATTENZIONE!Il playbook richiede il riavvio di OPENSIPS! Premi invio per proseguire. Premi Ctrl+c e poi "a" per interrompere'
+  run_once: true
+  when: ansible_check_mode != true
+
+- include: estrazione_dati_opensips.yml
+# In uscita a questa include abbiamo tutte le variabile valorizzate pronte per essere utilizzate dal modulo template
+
+- template:
+    backup: true
+    owner: opensips
+    group: opensips
+    mode: 0644
+    dest: /etc/opensips/opensips.cfg
+    src: templates/opensips.cfg.j2
+  handler: restart_opensips_6551
