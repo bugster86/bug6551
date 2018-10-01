@@ -1,2 +1,8 @@
 ---
 # handlers file for 6551
+- shell: \opensips -c
+  register: sintassi_ok_opensips
+  listen: "restart_opensips_6551"
+- service: name=opensips state=restarted
+  when: sintassi_ok_opensips.rc == 0
+  listen: "restart_opensips_6551"
