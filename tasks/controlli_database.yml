@@ -9,7 +9,7 @@
 # del DB non conosce la struttura di questo cliente
 - block:
   - name: mysqld non è in esecuzione
-    failed: msg="Non c'è in esecuzione nessuna istanza di mysqld"
+    fail: msg="Non c'è in esecuzione nessuna istanza di mysqld"
   - meta: end_play
   when: mysqlup_6551.rc != 0
 
@@ -30,10 +30,9 @@
 
 - block:
   - name: Fallisco se non è presente la tabella location
-     failed: msg="Non è presente la tabella opensips.location. Non posso procedere con l'aggiornamento"
+    fail: msg="Non è presente la tabella opensips.location. Non posso procedere con l'aggiornamento"
   - meta: end_play
-  when:
-    location1_6551.rc != 0 or location2_6551.rc != 0
+  when: location1_6551.rc != 0 or location2_6551.rc != 0
 
 # posso procedere a quello che serve per l'inserimento della parte dialplan
 

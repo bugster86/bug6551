@@ -13,12 +13,12 @@
   - name: Fallisco l'applicazione del bugfix se non esiste il parametro DB
     fail: msg="Non posso procedere perchè non è presente il parametro DB"
   - meta: end_play
-  when: DB not defined
+  when: DB is not defined
 
 - include: controlli_database.yml
   when: inventory_hostname == DB
 
-- name: ps -C opensips
+- shell: ps -C opensips
   changed_when: false
   failed_when: false
   check_mode: false
@@ -31,4 +31,4 @@
 - include: modifica_opensips.yml
   when:
   - opensips_up_6551.rc == 0
-  - cfg_opensips_presente_6551.stats.exists
+  - cfg_opensips_presente_6551.stat.exists
