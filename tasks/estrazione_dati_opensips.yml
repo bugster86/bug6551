@@ -1,2 +1,37 @@
 # In questo file .yml estraimamo dal vecchio file di configurazione di opensips tutte
 # le variabile che servono al template
+- name: Estraggo la variabile hostname
+  shell: grep listen /etc/opensips/opensips.cfg | grep udp | grep -v "#" | cut -d ":" -f2
+  changed_when: false
+  check_mode: false
+  register: hostname
+
+- name: Estraggo la variabile alias
+  shell: grep alias /etc/opensips/opensips.cfg | grep -v "#" | cut -d "=" -f2
+  changed_when: false
+  check_mode: false
+  register: alias
+
+- name: Estraggo i puntamenti agli rtpproxy
+  shell: grep rtpproxy /etc/opensips/opensips.cfg | grep rtpproxy_sock | grep -v "#"
+  changed_when: false
+  check_mode: false
+  register: rtpproxy_endpoint
+
+- name: Estraggo il valore della password per l'utente mysql easycim
+  shell: grep mysql /etc/opensips/opensips.cfg  | grep db_url | grep usrloc | grep -v "#" | cut -d "@" -f1 | cut -d ":" -f3
+  changed_when: false
+  check_mode: false
+  register: password_easycim
+
+- name: Estraggo il puntamento al database
+  shell: grep mysql /etc/opensips/opensips.cfg  | grep db_url | grep usrloc | grep -v "#" | cut -d "@" -f2 | cut -d ":" -f1
+  changed_when: false
+  check_mode: false
+  register: puntamento_db
+
+- name: Estraggo il puntamento allo strato stereo_recording
+  shell: grep rest_get /etc/opensips/opensips.cfg | grep stereo_recording | head -n1 | cut -d "/" -f3
+  changed_when: false
+  check_mode: false
+  register: restget_stereo_rec

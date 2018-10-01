@@ -7,11 +7,11 @@ check_via=no		# (cmd. line: -v)
 dns=no				# (cmd. line: -r)
 rev_dns=no			# (cmd. line: -R)
 children=1
-listen=udp:{{ hostname }}:5060
-listen=tcp:{{ hostname }}:5060
+listen=udp:{{ hostname.stdout }}:5060
+listen=tcp:{{ hostname.stdout }}:5060
 wdir="/home/reicom/"
 
-alias={{ alias }}
+alias={{ alias.stdout }}
 user_agent_header="User-Agent: SIPProxy Reitek SpA"
 # ------------------ module loading ----------------------------------
 
@@ -85,10 +85,10 @@ modparam("auth", "calculate_ha1", 1)
 modparam("db_text", "db_mode", 0)
 modparam("tm", "disable_6xx_block", 1)
 
-{{ rtpproxy_endpoint }}
+{{ rtpproxy_endpoint.stdout }}
 modparam("rtpproxy", "nortpproxy_str", "")
 
-modparam("uac_registrant|usrloc|dialog|dialplan", "db_url", "mysql://easycim:3a$yc1m_{{ password_easycim }}@{{ puntamento_db }}:3306/opensips")
+modparam("uac_registrant|usrloc|dialog|dialplan", "db_url", "mysql://easycim:3a$yc1m_{{ password_easycim.stdout }}@{{ puntamento_db.stdout }}:3306/opensips")
 modparam("cachedb_memcached", "cachedb_url","memcached:g1://memcached-host:11211/")
 modparam("cachedb_redis", "cachedb_url","redis:g1://redis-host:6379/")
 
@@ -187,7 +187,7 @@ route
 		if ($var(rtpproxy) == "YES" ) {
 			$avp(startTS_S) = $Ts;
 			$avp(startTS_SM) = $Tsm;
-			async(rest_get("http://{{ restget_stereo_rec }}/stereo_recording/stereo_recording.php?mode=end&callid=$ci", "$var(body)",,  "$var(rcode)"),"1"); #go to route[1]
+			async(rest_get("http://{{ restget_stereo_rec.stdout }}/stereo_recording/stereo_recording.php?mode=end&callid=$ci", "$var(body)",,  "$var(rcode)"),"1"); #go to route[1]
 		}
 	}
 
