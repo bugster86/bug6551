@@ -24,5 +24,11 @@
   check_mode: false
   register: opensips_up_6551
 
+- name: Esiste il file di configurazione di opensips?
+  stat: path=/etc/opensips/opensips.cfg
+  register: cfg_opensips_presente_6551
+
 - include: modifica_opensips.yml
-  when: opensips_up_6551.rc == 0
+  when:
+  - opensips_up_6551.rc == 0
+  - cfg_opensips_presente_6551.stats.exists

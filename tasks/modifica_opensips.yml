@@ -1,7 +1,36 @@
+# Eseguo dei controlli preventivi sul server perchè il file hosts del Server
+# in cui gira opensips deve avere tutti i riferimenti corretti
+
+- name: cerco la entry memcached-host all'interno di /etc/hosts
+  shell: grep memcached-host /etc/hosts | grep -v "#"
+  failed_when: false
+  changed_when: false
+  check_mode: false
+  register: memcached_hosts_6551
+
+- block:
+  - fail: msg="Non posso applicare questo bugfix. Nel file /etc/hosts non è presente il riferimento a memcached-host. Vanno applicati dei playbook precedenti per allineare la situazione"
+  - meta: end_play
+  when: memcached_hosts_6551.rc != 0
+
+- name: cerco la entry redis-host all'interno di /etc/hosts
+  shell: grep redis-host /etc/hosts | grep -v "#"
+  failed_when: false
+  changed_when: false
+  check_mode: false
+  register: redis_hosts_6551
+
+- block:
+  - fail: msg="Non posso applicare questo bugfix. Nel file /etc/hosts non è presente il riferimento a redis-host. Vanno applicati dei playbook precedenti per allineare la situazione"
+  - meta: end_play
+  when: redis_hosts_6551.rc != 0
+
+
 - name: Sei sicuro di voler procedere?
   pause: prompt='ATTENZIONE!Il playbook richiede il riavvio di OPENSIPS! Premi invio per proseguire. Premi Ctrl+c e poi "a" per interrompere'
   run_once: true
   when: ansible_check_mode != true
+
 
 - include: estrazione_dati_opensips.yml
 # In uscita a questa include abbiamo tutte le variabile valorizzate pronte per essere utilizzate dal modulo template
