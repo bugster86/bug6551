@@ -88,7 +88,7 @@ modparam("tm", "disable_6xx_block", 1)
 {{ rtpproxy_endpoint.stdout }}
 modparam("rtpproxy", "nortpproxy_str", "")
 
-modparam("uac_registrant|usrloc|dialog|dialplan", "db_url", "mysql://easycim:3a$yc1m_{{ password_easycim.stdout }}@{{ puntamento_db.stdout }}:3306/opensips")
+modparam("uac_registrant|usrloc|dialog|dialplan", "db_url", "mysql://easycim:{{ password_easycim.stdout }}@{{ puntamento_db.stdout }}:3306/opensips")
 modparam("cachedb_memcached", "cachedb_url","memcached:g1://memcached-host:11211/")
 modparam("cachedb_redis", "cachedb_url","redis:g1://redis-host:6379/")
 
