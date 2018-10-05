@@ -102,6 +102,8 @@ startup_route
 	$var(rec_lifetime) = 14400; # Recorder variable lifetime in seconds
 	$var(regexp)="/^(INVITE|Via|Route|Max-Forwards|Allow|Content-Type|Content-Length|CSeq|To|From|X-2X-CallProfileID|X-2X-DNIS|X-2X-Service|X-2X-JobType):?\s.*//g";
 }
+
+
 # main routing logic
 
 route
@@ -372,8 +374,12 @@ route
 		if (method==INVITE )
 		{
 			xlog("L_INFO","INVITE received");
-			#Chek if ruri is registered
+
+			#Check if ruri is registered
 			route(2);
+
+			#Check if the call is routable by the dispatcher module using a generic disp_setid_alg ruri user
+			route(dispatcher);
 
 			# Handle X-2X-Service header (B2BUAEP) or callto: into To Header for backwards compatibility with X2XSIPEndpoint
 			if ((! uri=~"tel:.*") && ((search("X-2X-Service:") && (!(is_present_hf("Referred-By")) || !$tU ) && !(is_present_hf("Replaces"))) || ($tu =~ "callto:")))
@@ -397,6 +403,9 @@ route
 
 	route(1);
 }
+
+
+# additional routes
 
 #forward della chiamata
 route[1]
@@ -1052,7 +1061,32 @@ route[check_auth] {
 }
 
 
+route[dispatcher] {
+        if ($rU =~ "^disp_[0-9]+_[0-9]+$") {
+                $var(setid) = $(rU{s.select,1,_});
+                $var(alg) = $(rU{s.select,2,_});
+                xlog("L_INFO","dispatcher: Received a dispatcher request: $rU - setID $var(setid) - alg: $var(alg)");
+                ds_select_dst("$var(setid)","$var(alg)","f");
 
+                if ($retcode < 0)
+                {
+                        xlog("L_ERR","dispacther: No entry found for setID: $var(setid) - send 404");
+                        send_reply("404","Not Found");
+                        exit;
+                }
+
+                $ru=$avp(271);
+                $du=$ru;
+                xlog("L_INFO","dispatcher: Send request to $avp(271) - next is $(avp(271)[1])");
+                t_on_branch("dispatcher_branch");
+                t_on_failure("dispatcher_failover");
+                route(2);
+                route(1);
+        }
+}
+
+
+# onreply routes
 
 onreply_route
 {
@@ -1070,6 +1104,45 @@ onreply_route
 	}
 
 }
+
+onreply_route[rtpproxy]
+{
+        xlog("L_INFO","------------------------------------------------------------");
+        xlog("L_NOTICE","Received response [$si:$sp] $rs $rr $rm CSeq: $cs $ci");
+        xlog("L_INFO","$mb" );
+	xlog("L_INFO", "RTPPROXY: $avp(proxy)");
+
+	if ($rs >= 180 ) {
+		if (is_present_hf("X-2X-CallUUID")) {
+			xlog("L_INFO","Set in memcached UUID: $hdr(X-2X-CallUUID) and callid $ci");
+			cache_store("memcached:g1","recorder:uuid:$ci", "$hdr(X-2X-CallUUID)",$var(rec_lifetime));
+			cache_store("memcached:g1","recorder:callid:$hdr(X-2X-CallUUID)", "$ci",$var(rec_lifetime));
+			$var(uuid) = $hdr(X-2X-CallUUID);
+		} else {
+			$var(uuid) = $avp(uuid);
+		}
+
+		xlog("L_INFO","PartySwitchID: $ci;to-tag=$tt;from-tag=$ft and uuid is $avp(uuid) -  $var(uuid)");
+		cache_store("memcached:g1","recorder:established:$var(uuid)","$ci;to-tag=$tt;from-tag=$ft",$var(rec_lifetime));
+		cache_store("memcached:g1","recorder:sipkey:$var(uuid):$tU","$ci;to-tag=$tt;from-tag=$ft",$var(rec_lifetime));
+	}
+
+}
+
+
+# branch routes
+
+# Branch route in order to overwrite To header
+branch_route[dispatcher_branch]
+{
+        xlog("L_INFO", "BRANCH ROUTE dispatcher_branch");
+
+        remove_hf("To");
+        append_hf("To: <$ru>\r\n");
+}
+
+
+# failure routes
 
 failure_route[1]
 {
@@ -1097,7 +1170,6 @@ failure_route[2]
         exit;
 	}
 }
-
 
 failure_route[provider_auth]
 {
@@ -1140,30 +1212,27 @@ failure_route[provider_auth]
 	}
 }
 
-
-onreply_route[rtpproxy]
+# Failure detection in order to choose next available destination
+failure_route[dispatcher_failover]
 {
-        xlog("L_INFO","------------------------------------------------------------");
-        xlog("L_NOTICE","Received response [$si:$sp] $rs $rr $rm CSeq: $cs $ci");
-        xlog("L_INFO","$mb" );
-	xlog("L_INFO", "RTPPROXY: $avp(proxy)");
+        if (t_was_cancelled())
+        {
+                exit;
+        }
 
-	if ($rs >= 180 ) {
-		if (is_present_hf("X-2X-CallUUID")) {
-			xlog("L_INFO","Set in memcached UUID: $hdr(X-2X-CallUUID) and callid $ci");
-			cache_store("memcached:g1","recorder:uuid:$ci", "$hdr(X-2X-CallUUID)",$var(rec_lifetime));
-			cache_store("memcached:g1","recorder:callid:$hdr(X-2X-CallUUID)", "$ci",$var(rec_lifetime));
-			$var(uuid) = $hdr(X-2X-CallUUID);
-		} else {
-			$var(uuid) = $avp(uuid);
+        xlog("L_INFO", "FAILURE ROUTE dispatcher_failover - call to $rd:$rp failed ($(<reply>rs) $(<reply>rr))");
+
+        if (t_check_status("(408)|([56][0-9][0-9])"))
+        {
+                xlog("L_NOTICE","FAILURE ROUTE dispatcher_failover - marking $rd:$rp");
+                ds_mark_dst("p");
 		}
 
-		xlog("L_INFO","PartySwitchID: $ci;to-tag=$tt;from-tag=$ft and uuid is $avp(uuid) -  $var(uuid)");
-		cache_store("memcached:g1","recorder:established:$var(uuid)","$ci;to-tag=$tt;from-tag=$ft",$var(rec_lifetime));
-		cache_store("memcached:g1","recorder:sipkey:$var(uuid):$tU","$ci;to-tag=$tt;from-tag=$ft",$var(rec_lifetime));
-	}
 
 }
+
+
+# local routes
 
 local_route {
 
@@ -1175,6 +1244,10 @@ local_route {
 		add_local_rport();
 	}
 }
+
+
+# event routes
+
 event_route[E_UL_CONTACT_DELETE]
 {
 	fetch_event_params("aor=$var(aor)");
